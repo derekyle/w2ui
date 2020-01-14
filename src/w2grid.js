@@ -596,6 +596,28 @@
             return true;
         },
 
+        set_replace_row: function (recid, record, noRefresh) { // overrides without trying to merge
+            if (typeof recid == 'object') {
+                noRefresh = record;
+                record = recid;
+                recid = null;
+            }
+
+            if (recid == null) return false;
+
+            var ind = this.get(recid, true);
+            if (ind == null) return false;
+            var isSummary = (this.records[ind] && this.records[ind].recid == recid ? false : true);
+            if (isSummary) {
+                $.extend(true, this.summary[ind], record);
+            } else {
+                this.records[ind] = record;
+            }
+            if (noRefresh !== true) this.refreshRow(recid, ind); // refresh only that record
+
+            return true;
+        },
+
         get: function (recid, returnIndex) {
             // search records
             if ($.isArray(recid)) {

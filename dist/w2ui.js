@@ -3004,15 +3004,21 @@ w2utils.event = {
                         if (options.altRows !== true) bg = '';
                         var colspan = 1;
                         if (imgd === '') colspan++;
-                        if (mitem.count == null && mitem.hotkey == null && mitem.remove !== true && !Array.isArray(mitem.items)) colspan++;
+                        if (mitem.count == null && mitem.hotkey == null && mitem.remove !== true && mitem.items == null) colspan++;
                         if (mitem.tooltip == null && mitem.hint != null) mitem.tooltip = mitem.hint; // for backward compatibility
                         var count_dsp = '';
                         if (mitem.remove === true) {
                             count_dsp = '<span class="remove">X</span>'
-                        } else if (Array.isArray(mitem.items)) {
+                        } else if (mitem.items != null) {
+                            var _items = []
+                            if (typeof mitem.items == 'function') {
+                                _items = mitem.items(mitem)
+                            } else if (Array.isArray(mitem.items)) {
+                                _items = mitem.items
+                            }
                             count_dsp = '<span></span>'
                             subMenu_dsp = '<tr style="'+ (mitem.expanded ? '' : 'display: none') +'">'+
-                                          '     <td colspan="3">' + getMenuHTML(mitem.items, true, !mitem.expanded, f) + '</td>'+
+                                          '     <td colspan="3">' + getMenuHTML(_items, true, !mitem.expanded, f) + '</td>'+
                                           '<tr>';
                         } else {
                             if (mitem.count != null)  count_dsp += '<span>' + mitem.count + '</span>'
@@ -4000,6 +4006,28 @@ w2utils.event = {
                 }
                 if (noRefresh !== true) this.refreshRow(recid, ind); // refresh only that record
             }
+            return true;
+        },
+
+        set_replace_row: function (recid, record, noRefresh) { // overrides without trying to merge
+            if (typeof recid == 'object') {
+                noRefresh = record;
+                record = recid;
+                recid = null;
+            }
+
+            if (recid == null) return false;
+
+            var ind = this.get(recid, true);
+            if (ind == null) return false;
+            var isSummary = (this.records[ind] && this.records[ind].recid == recid ? false : true);
+            if (isSummary) {
+                $.extend(true, this.summary[ind], record);
+            } else {
+                this.records[ind] = record;
+            }
+            if (noRefresh !== true) this.refreshRow(recid, ind); // refresh only that record
+
             return true;
         },
 
@@ -9279,6 +9307,21 @@ w2utils.event = {
                     var edata = { phase: 'before', type: 'columnResize', target: obj.name, column: obj.last.tmp.col, field: obj.columns[obj.last.tmp.col].field };
                     edata = obj.trigger($.extend(edata, { resizeBy: 0, originalEvent: event }));
                     // set move event
+                    function debounce(f, ms, obj) {
+                      var timer;
+                      return function () {
+                        var self = this, args = arguments;
+                        timer && clearTimeout(timer);
+                        timer = setTimeout(function() {
+                          f && f.apply(obj || self, args);
+                          timer = null;
+                        }, ms);
+                      }
+                    }
+                    var mouseMoveDebounce = debounce(function(){
+                        obj.resizeRecords();
+                        obj.scroll();
+                    }, 100, obj);
                     var mouseMove = function (event) {
                         if (obj.resizing != true) return;
                         if (!event) event = window.event;
@@ -9289,8 +9332,7 @@ w2utils.event = {
                         obj.last.tmp.x = (event.screenX - obj.last.tmp.x);
                         obj.last.tmp.y = (event.screenY - obj.last.tmp.y);
                         obj.columns[obj.last.tmp.col].size = (parseInt(obj.columns[obj.last.tmp.col].size) + obj.last.tmp.x) + 'px';
-                        obj.resizeRecords();
-                        obj.scroll();
+                        mouseMoveDebounce();
                         // reset
                         obj.last.tmp.x = event.screenX;
                         obj.last.tmp.y = event.screenY;
