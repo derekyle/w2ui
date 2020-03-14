@@ -8442,7 +8442,7 @@ w2utils.event = {
                     }
                     // if toolbar input is clicked
                     setTimeout(function () {
-                        if (['INPUT', 'TEXTAREA', 'SELECT'].indexOf(target.tagName.toUpperCase()) != -1) {
+                        if (['INPUT', 'TEXTAREA', 'SELECT'].indexOf(target.tagName.toUpperCase()) != -1 || $(target).attr('contenteditable') !== undefined) {
                             $(target).focus();
                         } else {
                             if (!$input.is(':focus')) $input.focus();
